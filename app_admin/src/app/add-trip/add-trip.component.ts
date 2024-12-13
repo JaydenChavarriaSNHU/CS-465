@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { TripDataService } from '../services/trip-data.service';
+import { AuthenticationService } from '../services/authentication.service';
 
 @Component({
   selector: 'app-add-trip',
@@ -17,8 +18,10 @@ export class AddTripComponent implements OnInit {
 constructor(
   private formBuilder: FormBuilder,
   private router: Router,
-  private tripService: TripDataService
+  private tripService: TripDataService,
+  private authenticationService: AuthenticationService
   ) { }
+
   ngOnInit() {
   this.addForm = this.formBuilder.group({
     _id: [],
@@ -32,20 +35,32 @@ constructor(
     description: ['', Validators.required],
     })
   }
+
+  public isLoggedIn(): boolean {
+    return this.authenticationService.isLoggedIn();
+  }
+
   public onSubmit() {
     this.submitted = true;
     if(this.addForm.valid){
       this.tripService.addTrip(this.addForm.value)
-      .subscribe( {
-      next: (data: any) => {
-      console.log(data);
-      this.router.navigate(['']);
-    },
-    error: (error: any) => {
-      console.log('Error: ' + error);
-    }});
+        .subscribe({
+          next: (data: any) => {
+            console.log('Success:', data);
+            this.router.navigate(['/list-trips']);
+          },
+          error: (error: any) => {
+            console.error('Error details:', error);
+            if (error.status === 401) {
+              alert('Authentication error. Please login again.');
+              this.router.navigate(['/login']);
+            } else {
+              alert('Error saving trip: ' + (error.error?.message || error.message));
+            }
+          }
+        });
+    }
   }
-}
 // get the form short name to access the form fields
 get f() { return this.addForm.controls; }
 }

@@ -1,0 +1,10 @@
+/* navbar.component.css */
+.navbar-item {
+    cursor: pointer;
+    text-decoration: none;
+    color: rgba(0,0,0,.5);
+  }
+  
+  .navbar-item:hover {
+    color: rgba(0,0,0,.7);
+  }

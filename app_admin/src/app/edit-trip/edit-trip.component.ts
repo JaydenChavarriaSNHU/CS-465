@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from "@angular/forms";
 import { TripDataService } from '../services/trip-data.service';
 import { Trip } from '../models/trip';
@@ -18,9 +18,13 @@ export class EditTripComponent implements OnInit {
   trip!: Trip;
   submitted = false;
   message : string = '';
+  showModal: boolean = false;
+  tripCode: string = ''; 
+
   constructor(
     private formBuilder: FormBuilder,
     private router: Router,
+    private route: ActivatedRoute,
     private tripDataService: TripDataService
   ) {}
     
@@ -33,6 +37,8 @@ export class EditTripComponent implements OnInit {
       this.router.navigate(['']);
       return;
     }
+    this.tripCode = tripCode;
+    
     console.log('EditTripComponent::ngOnInit');
     console.log('tripcode:' + tripCode);
     this.editForm = this.formBuilder.group({
@@ -46,43 +52,73 @@ export class EditTripComponent implements OnInit {
       image: ['', Validators.required],
       description: ['', Validators.required]
     })
+
     this.tripDataService.getTrip(tripCode)
     .subscribe({
       next: (value: any) => {
         this.trip = value;
-        // Populate our record into the form
-        this.editForm.patchValue(value[0]);
-        if(!value)
-        {
-          this.message = 'No Trip Retrieved!';
+        // Format the date before setting it in the form
+        if (value[0]) {
+          const tripData = value[0];
+          // Format the date to YYYY-MM-DD
+          const startDate = new Date(tripData.start);
+          tripData.start = startDate.toISOString().split('T')[0];
+          this.editForm.patchValue(tripData);
         }
-        else{
-          this.message = 'Trip: ' + tripCode + ' retrieved';
-        }
-        console.log(this.message);
+        // ... rest of your code ...
       },
       error: (error: any) => {
-        console.log('Error: ' + error);
+        console.log('Error:', error);
       }
     })
-  }
-  public onSubmit()
-  {
-    this.submitted = true;
-    if(this.editForm.valid)
-    {
-      this.tripDataService.updateTrip(this.editForm.value)
+}
+
+onDeleteClick(): void {
+  this.showModal = true;
+}
+
+cancelDelete(): void {
+  this.showModal = false;
+}
+
+confirmDelete(): void {
+  if (this.tripCode) { 
+    this.tripDataService.deleteTrip(this.tripCode)
       .subscribe({
-      next: (value: any) => {
-        console.log(value);
-        this.router.navigate(['']);
-      },
-      error: (error: any) => {
-        console.log('Error: ' + error);
-      }
-      })
-    }
+        next: () => {
+          this.showModal = false;
+          this.router.navigate(['/list-trips']);
+        },
+        error: (error) => {
+          console.error('Error deleting trip:', error);
+        }
+      });
   }
+}
+
+public onSubmit() {
+  this.submitted = true;
+  if(this.editForm.valid) {
+      console.log('Form data being submitted:', this.editForm.value);
+      
+      this.tripDataService.updateTrip(this.editForm.value)
+          .subscribe({
+              next: (result) => {
+                  console.log('Update successful:', result);
+                  this.router.navigate(['/list-trips']);
+              },
+              error: (error) => {
+                  console.error('Update failed:', error);
+                  if (error.status === 401) {
+                      alert('Authentication error. Please login again.');
+                      this.router.navigate(['/login']);
+                  } else {
+                      alert('Error updating trip: ' + (error.message || 'Unknown error'));
+                  }
+              }
+          });
+  }
+}
 
 // get the form short name to access the form fields
 get f() { return this.editForm.controls; }
